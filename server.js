@@ -12,11 +12,14 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// ✅ Serve frontend build
+// Serve React build
 app.use(express.static(path.join(__dirname, "dist")));
-
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "dist", "index.html"));
+app.use((req, res, next) => {
+  if (req.method === "GET" && !req.path.startsWith("/socket.io")) {
+    res.sendFile(path.join(__dirname, "dist", "index.html"));
+  } else {
+    next();
+  }
 });
 
 // ---------- SOCKET LOGIC ----------
@@ -69,6 +72,6 @@ io.on("connection", (socket) => {
   });
 });
 
-// ✅ Use Render-assigned port
+// Use Render port
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Listening on port ${PORT}`));
