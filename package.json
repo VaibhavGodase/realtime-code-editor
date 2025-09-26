@@ -3,17 +3,18 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-"scripts": {
-  "dev": "vite",
-  "build": "vite build",
-  "preview": "vite preview",
-  "server:dev": "nodemon server.js",
-  "server:prod": "node server.js",
-  "start": "npm run build && npm run server:prod"
-},
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server:dev": "nodemon server.js",
+    "server:prod": "node server.js",
+    "start": "npm run build && npm run server:prod"
+  },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.13",
     "codemirror": "^5.65.20",
+    "cors": "^2.8.5",
     "dom": "^0.0.3",
     "express": "^5.1.0",
     "react": "^19.1.1",
@@ -21,7 +22,6 @@
     "react-dom": "^19.1.1",
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.9.1",
-    "router": "^2.2.0",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "tailwindcss": "^4.1.13",

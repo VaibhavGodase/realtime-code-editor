@@ -16,6 +16,28 @@ const EditorPage = () => {
   const [clients, setClients] = useState([]);
   const [sidebarPercent, setSidebarPercent] = useState(0.2);
   const [editorPercent, setEditorPercent] = useState(0.8);
+  const [output, setOutput] = useState('');
+const [language, setLanguage] = useState('javascript'); // or add a select box
+
+async function runCode() {
+  const url = `${import.meta.env.VITE_BACKEND_URL}/run`;
+  console.log('Fetching URL:', url); // Debug the URL
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        language,
+        source: codeRef.current,
+      }),
+    });
+    const data = await response.json();
+    setOutput((data.stdout || '') + (data.stderr || ''));
+  } catch (err) {
+    setOutput('Error: ' + err.message);
+  }
+}
+
 
   // Compute initial proportions on mount
   useEffect(() => {
@@ -129,15 +151,39 @@ const EditorPage = () => {
 
       {/* Editor */}
       <div
-        className="editorWrap h-full"
-        style={{ width: `${editorPercent * 100}%` }}
+  className="editorWrap h-full flex flex-col"
+  style={{ width: `${editorPercent * 100}%` }}
+>
+  <div className="flex-1">
+    <Editor
+      socketRef={socketRef}
+      roomId={roomId}
+      onCodeChange={code => (codeRef.current = code)}
+    />
+  </div>
+
+  <div className="run-section p-2 bg-[#1c1e29] text-white">
+    <div className="flex gap-2 mb-2">
+      <select value={language} onChange={e => setLanguage(e.target.value)}>
+        <option value="javascript">JavaScript</option>
+        <option value="python3">Python 3</option>
+        <option value="cpp">C++</option>
+        <option value="java">Java</option>
+      </select>
+      <button
+        onClick={runCode}
+        className="px-2 py-1 bg-[#46d37c] rounded hover:bg-[#2b824c]"
       >
-        <Editor
-          socketRef={socketRef}
-          roomId={roomId}
-          onCodeChange={code => (codeRef.current = code)}
-        />
-      </div>
+        Run
+      </button>
+    </div>
+
+    <div className="output p-2 bg-black text-green-400 h-40 overflow-auto">
+      <pre>{output}</pre>
+    </div>
+  </div>
+</div>
+
     </div>
   );
 };
