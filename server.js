@@ -47,12 +47,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// Language version mapping for Piston API
-const languageVersions = {
-  javascript: '18.15.0', // Node.js version
-  python3: '3.10.0',
-  cpp: '10.2.0',
-  java: '15.0.2',
+// Language configuration for Piston API
+const languageConfig = {
+  javascript: { version: '18.15.0', fileName: 'main.js' },
+  python3: { version: '3.10.0', fileName: 'main.py' },
+  cpp: { version: '10.2.0', fileName: 'main.cpp' },
+  java: { version: '15.0.2', fileName: 'Main.java' },
 };
 
 // Run code endpoint
@@ -65,8 +65,8 @@ app.post('/run', async (req, res) => {
     return res.status(400).json({ error: 'Language and source are required' });
   }
 
-  const version = languageVersions[language];
-  if (!version) {
+  const config = languageConfig[language];
+  if (!config) {
     console.log(`[${new Date().toISOString()}] Unsupported language: ${language}`);
     return res.status(400).json({ error: `Unsupported language: ${language}` });
   }
@@ -77,8 +77,13 @@ app.post('/run', async (req, res) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         language,
-        version,
-        source,
+        version: config.version,
+        files: [
+          {
+            name: config.fileName,
+            content: source,
+          },
+        ],
       }),
     });
     console.log(`[${new Date().toISOString()}] Piston API response status: ${response.status}`);
