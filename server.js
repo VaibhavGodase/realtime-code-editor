@@ -1,28 +1,86 @@
-import express from "express";
-import http from "http";
-import path from "path";
-import { Server } from "socket.io";
-import { fileURLToPath } from "url";
-import ACTIONS from "./Actions.js";
+import express from 'express';
+import http from 'http';
+import path from 'path';
+import { Server } from 'socket.io';
+import { fileURLToPath } from 'url';
+import ACTIONS from './Actions.js';
+import cors from 'cors';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+
+// Configure Socket.IO with CORS
+const io = new Server(server, {
+  cors: {
+    origin: ['http://localhost:5173', 'https://syncraft.onrender.com'],
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+});
+
+// Middleware
+app.use(express.json()); // Parse JSON bodies
+app.use(cors({
+  origin: (origin, callback) => {
+    const allowedOrigins = ['http://localhost:5173', 'https://syncraft.onrender.com'];
+    console.log(`[${new Date().toISOString()}] CORS check for origin: ${origin}`);
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, origin || '*');
+    } else {
+      callback(new Error('CORS policy: Origin not allowed'));
+    }
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  credentials: true,
+}));
+
+// Log all requests and responses
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} from origin: ${req.headers.origin}`);
+  res.on('finish', () => {
+    console.log(`[${new Date().toISOString()}] Response for ${req.method} ${req.url}: Status ${res.statusCode}, Headers: ${JSON.stringify(res.getHeaders())}`);
+  });
+  next();
+});
+
+// Run code endpoint
+app.post('/run', async (req, res) => {
+  console.log(`[${new Date().toISOString()}] POST /run received:`, req.body);
+  const { language, source } = req.body;
+
+  try {
+    const response = await fetch('https://emkc.org/api/v2/piston/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        language: language || 'javascript',
+        source,
+      }),
+    });
+    const data = await response.json();
+    console.log(`[${new Date().toISOString()}] Piston API response:`, data);
+    res.json(data);
+  } catch (err) {
+    console.error(`[${new Date().toISOString()}] Error in /run:`, err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Serve React build
-app.use(express.static(path.join(__dirname, "dist")));
+app.use(express.static(path.join(__dirname, 'dist')));
 app.use((req, res, next) => {
-  if (req.method === "GET" && !req.path.startsWith("/socket.io")) {
-    res.sendFile(path.join(__dirname, "dist", "index.html"));
+  if (req.method === 'GET' && !req.path.startsWith('/socket.io')) {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
   } else {
     next();
   }
 });
 
-// ---------- SOCKET LOGIC ----------
+// Socket logic
 const userSocketMap = {};
 
 function getAllConnectedClients(roomId) {
@@ -34,8 +92,8 @@ function getAllConnectedClients(roomId) {
   );
 }
 
-io.on("connection", (socket) => {
-  console.log("Socket connected:", socket.id);
+io.on('connection', (socket) => {
+  console.log(`[${new Date().toISOString()}] Socket connected:`, socket.id);
 
   socket.on(ACTIONS.JOIN, ({ roomId, username }) => {
     userSocketMap[socket.id] = username;
@@ -60,7 +118,7 @@ io.on("connection", (socket) => {
     io.to(socketId).emit(ACTIONS.CODE_CHANGE, { code });
   });
 
-  socket.on("disconnecting", () => {
+  socket.on('disconnecting', () => {
     const rooms = [...socket.rooms];
     rooms.forEach((roomId) => {
       socket.in(roomId).emit(ACTIONS.DISCONNECTED, {
@@ -72,6 +130,5 @@ io.on("connection", (socket) => {
   });
 });
 
-// Use Render port
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Listening on port ${PORT}`));
+server.listen(PORT, () => console.log(`[${new Date().toISOString()}] Listening on port ${PORT}`));
