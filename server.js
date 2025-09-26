@@ -47,22 +47,49 @@ app.use((req, res, next) => {
   next();
 });
 
+// Language version mapping for Piston API
+const languageVersions = {
+  javascript: '18.15.0', // Node.js version
+  python3: '3.10.0',
+  cpp: '10.2.0',
+  java: '15.0.2',
+};
+
 // Run code endpoint
 app.post('/run', async (req, res) => {
   console.log(`[${new Date().toISOString()}] POST /run received:`, req.body);
   const { language, source } = req.body;
+
+  if (!language || !source) {
+    console.log(`[${new Date().toISOString()}] Missing language or source`);
+    return res.status(400).json({ error: 'Language and source are required' });
+  }
+
+  const version = languageVersions[language];
+  if (!version) {
+    console.log(`[${new Date().toISOString()}] Unsupported language: ${language}`);
+    return res.status(400).json({ error: `Unsupported language: ${language}` });
+  }
 
   try {
     const response = await fetch('https://emkc.org/api/v2/piston/execute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        language: language || 'javascript',
+        language,
+        version,
         source,
       }),
     });
+    console.log(`[${new Date().toISOString()}] Piston API response status: ${response.status}`);
     const data = await response.json();
-    console.log(`[${new Date().toISOString()}] Piston API response:`, data);
+    console.log(`[${new Date().toISOString()}] Piston API response data:`, data);
+    
+    if (response.status === 429) {
+      console.log(`[${new Date().toISOString()}] Rate limit exceeded`);
+      return res.status(429).json({ error: 'Rate limit exceeded. Please wait and try again.' });
+    }
+    
     res.json(data);
   } catch (err) {
     console.error(`[${new Date().toISOString()}] Error in /run:`, err.message);

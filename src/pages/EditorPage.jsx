@@ -17,29 +17,54 @@ const EditorPage = () => {
   const [sidebarPercent, setSidebarPercent] = useState(0.2);
   const [editorPercent, setEditorPercent] = useState(0.8);
   const [output, setOutput] = useState('');
-const [language, setLanguage] = useState('javascript'); // or add a select box
+  const [language, setLanguage] = useState('javascript');
+  const [isRunning, setIsRunning] = useState(false); // For debouncing
 
-async function runCode() {
-  const url = `${import.meta.env.VITE_BACKEND_URL}/run`;
-  console.log('Fetching URL:', url); // Debug the URL
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        language,
-        source: codeRef.current,
-      }),
-    });
-    const data = await response.json();
-    setOutput((data.stdout || '') + (data.stderr || ''));
-  } catch (err) {
-    setOutput('Error: ' + err.message);
+  async function runCode() {
+    if (isRunning) {
+      console.log('Run request ignored: previous request still in progress');
+      toast.error('Please wait before running again');
+      return;
+    }
+
+    setIsRunning(true);
+    const url = `${import.meta.env.VITE_BACKEND_URL}/run`;
+    console.log('Code to send:', codeRef.current);
+    console.log('Fetching URL:', url);
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          language,
+          source: codeRef.current,
+        }),
+      });
+      console.log('Response status:', response.status);
+      console.log('Response headers:', [...response.headers.entries()]);
+      const data = await response.json();
+      console.log('Response data:', data);
+
+      if (response.ok) {
+        if (data.message) {
+          setOutput(`Error: ${data.message}`);
+        } else if (data.run) {
+          setOutput((data.run.stdout || '') + (data.run.stderr || '') || 'No output');
+        } else {
+          setOutput('Unexpected response format');
+        }
+      } else {
+        setOutput(`Error: HTTP ${response.status} - ${data.error || data.message || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error('Fetch error:', err);
+      setOutput('Error: ' + err.message);
+    } finally {
+      setTimeout(() => setIsRunning(false), 200); // Allow next request after 200ms
+    }
   }
-}
 
-
-  // Compute initial proportions on mount
   useEffect(() => {
     const sidebar = document.querySelector('.aside');
     const editor = document.querySelector('.editorWrap');
@@ -113,7 +138,6 @@ async function runCode() {
 
   return (
     <div className="MainWrapper h-screen flex overflow-hidden">
-      {/* Sidebar */}
       <div
         className="aside bg-[#1c1e29] p-2 sm:p-4 text-white flex flex-col"
         style={{ width: `${sidebarPercent * 100}%`, minWidth: '150px' }}
@@ -149,41 +173,40 @@ async function runCode() {
         </button>
       </div>
 
-      {/* Editor */}
       <div
-  className="editorWrap h-full flex flex-col"
-  style={{ width: `${editorPercent * 100}%` }}
->
-  <div className="flex-1">
-    <Editor
-      socketRef={socketRef}
-      roomId={roomId}
-      onCodeChange={code => (codeRef.current = code)}
-    />
-  </div>
-
-  <div className="run-section p-2 bg-[#1c1e29] text-white">
-    <div className="flex gap-2 mb-2">
-      <select value={language} onChange={e => setLanguage(e.target.value)}>
-        <option value="javascript">JavaScript</option>
-        <option value="python3">Python 3</option>
-        <option value="cpp">C++</option>
-        <option value="java">Java</option>
-      </select>
-      <button
-        onClick={runCode}
-        className="px-2 py-1 bg-[#46d37c] rounded hover:bg-[#2b824c]"
+        className="editorWrap h-full flex flex-col"
+        style={{ width: `${editorPercent * 100}%` }}
       >
-        Run
-      </button>
-    </div>
+        <div className="flex-1">
+          <Editor
+            socketRef={socketRef}
+            roomId={roomId}
+            onCodeChange={code => (codeRef.current = code)}
+          />
+        </div>
 
-    <div className="output p-2 bg-black text-green-400 h-40 overflow-auto">
-      <pre>{output}</pre>
-    </div>
-  </div>
-</div>
+        <div className="run-section p-2 bg-[#1c1e29] text-white">
+          <div className="flex gap-2 mb-2">
+            <select value={language} onChange={e => setLanguage(e.target.value)}>
+              <option value="javascript">JavaScript</option>
+              <option value="python3">Python 3</option>
+              <option value="cpp">C++</option>
+              <option value="java">Java</option>
+            </select>
+            <button
+              onClick={runCode}
+              className="px-2 py-1 bg-[#46d37c] rounded hover:bg-[#2b824c]"
+              disabled={isRunning}
+            >
+              Run
+            </button>
+          </div>
 
+          <div className="output p-2 bg-black text-green-400 h-40 overflow-auto">
+            <pre>{output}</pre>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
