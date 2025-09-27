@@ -18,7 +18,7 @@ const EditorPage = () => {
   const [editorPercent, setEditorPercent] = useState(0.8);
   const [output, setOutput] = useState('');
   const [language, setLanguage] = useState('javascript');
-  const [isRunning, setIsRunning] = useState(false); // For debouncing
+  const [isRunning, setIsRunning] = useState(false);
 
   async function runCode() {
     if (isRunning) {
@@ -39,6 +39,7 @@ const EditorPage = () => {
         body: JSON.stringify({
           language,
           source: codeRef.current,
+          roomId, // Include roomId
         }),
       });
       console.log('Response status:', response.status);
@@ -46,22 +47,14 @@ const EditorPage = () => {
       const data = await response.json();
       console.log('Response data:', data);
 
-      if (response.ok) {
-        if (data.message) {
-          setOutput(`Error: ${data.message}`);
-        } else if (data.run) {
-          setOutput((data.run.stdout || '') + (data.run.stderr || '') || 'No output');
-        } else {
-          setOutput('Unexpected response format');
-        }
-      } else {
+      if (!response.ok) {
         setOutput(`Error: HTTP ${response.status} - ${data.error || data.message || 'Unknown error'}`);
       }
     } catch (err) {
       console.error('Fetch error:', err);
       setOutput('Error: ' + err.message);
     } finally {
-      setTimeout(() => setIsRunning(false), 200); // Allow next request after 200ms
+      setTimeout(() => setIsRunning(false), 200);
     }
   }
 
@@ -109,15 +102,22 @@ const EditorPage = () => {
         toast.success(`${username} left the room.`);
         setClients(prev => prev.filter(client => client.socketId !== socketId));
       });
+
+      // Listen for output changes
+      socketRef.current.on(ACTIONS.OUTPUT_CHANGE, ({ output }) => {
+        console.log('Received output:', output);
+        setOutput(output);
+      });
+
+      return () => {
+        socketRef.current.disconnect();
+        socketRef.current.off(ACTIONS.JOINED);
+        socketRef.current.off(ACTIONS.DISCONNECTED);
+        socketRef.current.off(ACTIONS.OUTPUT_CHANGE);
+      };
     };
 
     init();
-
-    return () => {
-      socketRef.current.disconnect();
-      socketRef.current.off(ACTIONS.JOINED);
-      socketRef.current.off(ACTIONS.DISCONNECTED);
-    };
   }, []);
 
   async function copyRoomId() {

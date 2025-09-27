@@ -22,7 +22,7 @@ const io = new Server(server, {
 });
 
 // Middleware
-app.use(express.json()); // Parse JSON bodies
+app.use(express.json());
 app.use(cors({
   origin: (origin, callback) => {
     const allowedOrigins = ['http://localhost:5173', 'https://syncraft.onrender.com'];
@@ -58,11 +58,11 @@ const languageConfig = {
 // Run code endpoint
 app.post('/run', async (req, res) => {
   console.log(`[${new Date().toISOString()}] POST /run received:`, req.body);
-  const { language, source } = req.body;
+  const { language, source, roomId } = req.body;
 
-  if (!language || !source) {
-    console.log(`[${new Date().toISOString()}] Missing language or source`);
-    return res.status(400).json({ error: 'Language and source are required' });
+  if (!language || !source || !roomId) {
+    console.log(`[${new Date().toISOString()}] Missing language, source, or roomId`);
+    return res.status(400).json({ error: 'Language, source, and roomId are required' });
   }
 
   const config = languageConfig[language];
@@ -89,12 +89,19 @@ app.post('/run', async (req, res) => {
     console.log(`[${new Date().toISOString()}] Piston API response status: ${response.status}`);
     const data = await response.json();
     console.log(`[${new Date().toISOString()}] Piston API response data:`, data);
-    
+
     if (response.status === 429) {
       console.log(`[${new Date().toISOString()}] Rate limit exceeded`);
       return res.status(429).json({ error: 'Rate limit exceeded. Please wait and try again.' });
     }
-    
+
+    // Broadcast output to all clients in the room
+    const output = data.message
+      ? `Error: ${data.message}`
+      : (data.run?.stdout || '') + (data.run?.stderr || '') || 'No output';
+    io.to(roomId).emit(ACTIONS.OUTPUT_CHANGE, { output });
+    console.log(`[${new Date().toISOString()}] Emitted ${ACTIONS.OUTPUT_CHANGE} to room ${roomId}:`, output);
+
     res.json(data);
   } catch (err) {
     console.error(`[${new Date().toISOString()}] Error in /run:`, err.message);
