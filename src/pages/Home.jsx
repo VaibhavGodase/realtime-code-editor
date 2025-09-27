@@ -40,7 +40,7 @@ const Home = () => {
 
           {/* Left side - Form Inputs */}
           <div className="flex-1 flex flex-col">
-            <img className="h-[80px] mb-[20px]" src="/code-sync.png" alt="code-sync.png" />
+            <img className="h-[80px] w-[250px] mb-[20px]" src="/code-sync.png" alt="code-sync.png" />
             <h4 className="mt-0 mb-[20px]">Paste invitation ROOM ID</h4>
             <input
               onChange={(e) => setRoomId(e.target.value)}

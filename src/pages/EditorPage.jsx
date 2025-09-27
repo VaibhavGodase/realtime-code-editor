@@ -39,7 +39,7 @@ const EditorPage = () => {
         body: JSON.stringify({
           language,
           source: codeRef.current,
-          roomId, // Include roomId
+          roomId,
         }),
       });
       console.log('Response status:', response.status);
@@ -103,7 +103,6 @@ const EditorPage = () => {
         setClients(prev => prev.filter(client => client.socketId !== socketId));
       });
 
-      // Listen for output changes
       socketRef.current.on(ACTIONS.OUTPUT_CHANGE, ({ output }) => {
         console.log('Received output:', output);
         setOutput(output);
@@ -177,7 +176,7 @@ const EditorPage = () => {
         className="editorWrap h-full flex flex-col"
         style={{ width: `${editorPercent * 100}%` }}
       >
-        <div className="flex-1">
+        <div className="editorContainer flex-1 overflow-auto">
           <Editor
             socketRef={socketRef}
             roomId={roomId}
@@ -185,9 +184,13 @@ const EditorPage = () => {
           />
         </div>
 
-        <div className="run-section p-2 bg-[#1c1e29] text-white">
+        <div className="run-section p-2 bg-[#1c1e29] text-white sticky bottom-0">
           <div className="flex gap-2 mb-2">
-            <select value={language} onChange={e => setLanguage(e.target.value)}>
+            <select
+              value={language}
+              onChange={e => setLanguage(e.target.value)}
+              className="px-2 py-1 bg-[#2b2d3a] text-white rounded-md text-sm sm:text-base font-bold focus:outline-none focus:ring-2 focus:ring-[#46d37c] hover:bg-[#3a3c4a]"
+            >
               <option value="javascript">JavaScript</option>
               <option value="python3">Python 3</option>
               <option value="cpp">C++</option>
@@ -195,7 +198,7 @@ const EditorPage = () => {
             </select>
             <button
               onClick={runCode}
-              className="px-2 py-1 bg-[#46d37c] rounded hover:bg-[#2b824c]"
+              className="px-2 py-1 bg-[#46d37c] rounded-md text-sm sm:text-base font-bold hover:bg-[#2b824c]"
               disabled={isRunning}
             >
               Run

@@ -3,6 +3,8 @@ import Codemirror from 'codemirror';
 import 'codemirror/lib/codemirror.css';
 import 'codemirror/theme/dracula.css';
 import 'codemirror/mode/javascript/javascript';
+import 'codemirror/mode/python/python';
+import 'codemirror/mode/clike/clike';
 import 'codemirror/addon/edit/closetag';
 import 'codemirror/addon/edit/closebrackets';
 import ACTIONS from '../../Actions';
@@ -20,9 +22,12 @@ const Editor = ({ socketRef, roomId, onCodeChange }) => {
           autoCloseTags: true,
           autoCloseBrackets: true,
           lineNumbers: true,
+          lineWrapping: true, // Wrap long lines
+          scrollbarStyle: 'native', // Use native browser scrollbars
         }
       );
 
+      // Set editor to fill container
       editorRef.current.setSize('100%', '100%');
 
       editorRef.current.on('change', (instance, changes) => {
@@ -47,7 +52,11 @@ const Editor = ({ socketRef, roomId, onCodeChange }) => {
     }
   }, [socketRef.current]);
 
-  return <textarea id="realtimeEditor" className="w-full h-full min-h-[300px]"></textarea>;
+  return (
+    <div className="codemirror-container h-full">
+      <textarea id="realtimeEditor"></textarea>
+    </div>
+  );
 };
 
 export default Editor;
